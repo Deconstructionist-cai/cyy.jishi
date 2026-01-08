@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>cyy的网页实践2</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: "微软雅黑", sans-serif; background: #f5f5f5; }
+        .login-container, .todo-container {
+            max-width: 500px;
+            margin: 100px auto;
+            padding: 30px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .login-container h2, .todo-container h2 {
+            margin-bottom: 20px;
+            color: #333;
+            text-align: center;
+        }
+        .pwd-input, #todo-input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        .login-btn, #add-btn {
+            width: 100%;
+            padding: 12px;
+            background: #4285f4;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .login-btn:hover, #add-btn:hover {
+            background: #3367d6;
+        }
+        .error-tip {
+            color: red;
+            margin-top: 10px;
+            text-align: center;
+            display: none;
+        }
+        .todo-container { display: none; }
+        .todo-header { display: flex; gap: 10px; margin-bottom: 20px; }
+        #add-btn { width: 120px; }
+        #todo-list { list-style: none; }
+        .todo-item {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .delete-btn {
+            color: #dc3545;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: #f8f9fa;
+        }
+    </style>
+</head>
+<body>
+    <!-- 密码登录区域 -->
+    <div class="login-container" id="loginBox">
+        <h2>请输入密码进入cyy的网页实践2</h2>
+        <input type="password" class="pwd-input" id="pwdInput" placeholder="默认密码：123456">
+        <button class="login-btn" id="loginBtn">确认登录</button>
+        <div class="error-tip" id="errorTip">密码错误，请重新输入！</div>
+    </div>
+
+    <!-- 待办事项区域 -->
+    <div class="todo-container" id="todoBox">
+        <h2>我的待办事项</h2>
+        <div class="todo-header">
+            <input type="text" id="todo-input" placeholder="输入待办事项...">
+            <button id="add-btn">添加</button>
+        </div>
+        <ul id="todo-list"></ul>
+    </div>
+
+    <script>
+        // 后端接口地址（和server.js的端口一致）
+        const API_BASE = 'http://localhost:3000/api';
+        // 获取页面元素
+        const loginBox = document.getElementById('loginBox');
+        const todoBox = document.getElementById('todoBox');
+        const pwdInput = document.getElementById('pwdInput');
+        const loginBtn = document.getElementById('loginBtn');
+        const errorTip = document.getElementById('errorTip');
+        const todoInput = document.getElementById('todo-input');
+        const addBtn = document.getElementById('add-btn');
+        const todoList = document.getElementById('todo-list');
+
+        // 1. 登录逻辑（调用后端接口）
+        loginBtn.addEventListener('click', async () => {
+            const password = pwdInput.value.trim();
+            if (!password) {
+                alert('请输入密码！');
+                return;
+            }
+            try {
+                // 发送密码到后端验证
+                const res = await fetch(`${API_BASE}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    // 登录成功：显示待办区域，加载数据
+                    loginBox.style.display = 'none';
+                    todoBox.style.display = 'block';
+                    loadTodos(); // 从数据库加载待办
+                } else {
+                    // 密码错误：显示提示
+                    errorTip.style.display = 'block';
+                    pwdInput.value = '';
+                    setTimeout(() => errorTip.style.display = 'none', 3000);
+                }
+            } catch (err) {
+                alert('服务器连接失败，请先启动后端服务！');
+            }
+        });
+
+        // 回车登录
+        pwdInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') loginBtn.click();
+        });
+
+        // 2. 加载所有待办事项（从数据库获取）
+        async function loadTodos() {
+            try {
+                const res = await fetch(`${API_BASE}/todos`);
+                const data = await res.json();
+                if (data.success) {
+                    renderTodos(data.data); // 渲染到页面
+                }
+            } catch (err) {
+                alert('加载待办事项失败！');
+            }
+        }
+
+        // 3. 渲染待办事项
+        function renderTodos(todos) {
+            todoList.innerHTML = '';
+            todos.forEach(todo => {
+                const li = document.createElement('li');
+                li.className = 'todo-item';
+                li.innerHTML = `
+                    <span>${todo.content}</span>
+                    <span class="delete-btn" data-id="${todo.id}">删除</span>
+                `;
+                todoList.appendChild(li);
+            });
+        }
+
+        // 4. 添加待办事项（调用后端接口）
+        addBtn.addEventListener('click', async () => {
+            const content = todoInput.value.trim();
+            if (!content) {
+                alert('请输入待办内容！');
+                return;
+            }
+            try {
+                const res = await fetch(`${API_BASE}/todos`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    todoInput.value = '';
+                    loadTodos(); // 重新加载列表
+                } else {
+                    alert('添加失败！');
+                }
+            } catch (err) {
+                alert('添加待办失败，请检查后端服务！');
+            }
+        });
+
+        // 回车添加待办
+        todoInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') addBtn.click();
+        });
+
+        // 5. 删除待办事项（调用后端接口）
+        todoList.addEventListener('click', async (e) => {
+            if (e.target.classList.contains('delete-btn')) {
+                const id = e.target.dataset.id;
+                try {
+                    const res = await fetch(`${API_BASE}/todos/${id}`, {
+                        method: 'DELETE'
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        loadTodos(); // 重新加载列表
+                    } else {
+                        alert('删除失败！');
+                    }
+                } catch (err) {
+                    alert('删除待办失败，请检查后端服务！');
+                }
+            }
+        });
+    </script>
+</body>
+</html>
