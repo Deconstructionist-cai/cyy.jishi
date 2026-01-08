@@ -7,10 +7,7 @@ const cors = require('cors');
 
 // 创建Express应用
 const app = express();
-const PORT = process.env.PORT || 3000; // 改为从环境变量获取端口
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+const port = 3000;
 
 // 配置中间件
 app.use(cors()); // 解决跨域问题
@@ -116,3 +113,4 @@ app.listen(port, () => {
     console.log('打开浏览器访问：http://localhost:3000/index.html 即可使用');
 
 });
+
