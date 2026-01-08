@@ -1,78 +1,81 @@
-// µ¼ÈëÐèÒªµÄ¿â
+// å¯¼å…¥éœ€è¦çš„åº“
 const express = require('express');
 const bodyParser = require('body-parser');
 const bcrypt = require('bcrypt');
 const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
 
-// ´´½¨ExpressÓ¦ÓÃ
+// åˆ›å»ºExpressåº”ç”¨
 const app = express();
-const port = 3000;
+const PORT = process.env.PORT || 3000; // æ”¹ä¸ºä»ŽçŽ¯å¢ƒå˜é‡èŽ·å–ç«¯å£
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
 
-// ÅäÖÃÖÐ¼ä¼þ
-app.use(cors()); // ½â¾ö¿çÓòÎÊÌâ
-app.use(bodyParser.json()); // ½âÎöJSONÇëÇó
-app.use(express.static('.')); // ÔÊÐí·ÃÎÊ±¾µØ¾²Ì¬ÎÄ¼þ£¨±ÈÈçindex.html£©
+// é…ç½®ä¸­é—´ä»¶
+app.use(cors()); // è§£å†³è·¨åŸŸé—®é¢˜
+app.use(bodyParser.json()); // è§£æžJSONè¯·æ±‚
+app.use(express.static('.')); // å…è®¸è®¿é—®æœ¬åœ°é™æ€æ–‡ä»¶ï¼ˆæ¯”å¦‚index.htmlï¼‰
 
-// 1. Á¬½ÓSQLiteÊý¾Ý¿â£¨Ã»ÓÐ»á×Ô¶¯´´½¨£©
+// 1. è¿žæŽ¥SQLiteæ•°æ®åº“ï¼ˆæ²¡æœ‰ä¼šè‡ªåŠ¨åˆ›å»ºï¼‰
 const db = new sqlite3.Database('./todo.db', (err) => {
     if (err) {
-        console.error('Êý¾Ý¿âÁ¬½ÓÊ§°Ü£º', err.message);
+        console.error('æ•°æ®åº“è¿žæŽ¥å¤±è´¥ï¼š', err.message);
     } else {
-        console.log('³É¹¦Á¬½ÓSQLiteÊý¾Ý¿â');
-        // ³õÊ¼»¯Êý¾Ý±í£¨ÓÃ»§±í+´ý°ì±í£©
+        console.log('æˆåŠŸè¿žæŽ¥SQLiteæ•°æ®åº“');
+        // åˆå§‹åŒ–æ•°æ®è¡¨ï¼ˆç”¨æˆ·è¡¨+å¾…åŠžè¡¨ï¼‰
         initDb();
     }
 });
 
-// 2. ³õÊ¼»¯Êý¾Ý¿â±í
+// 2. åˆå§‹åŒ–æ•°æ®åº“è¡¨
 function initDb() {
-    // ´´½¨ÓÃ»§±í£¨´æ´¢¹ÜÀíÔ±ÃÜÂë£¬ÕâÀïÖ»×öµ¥ÓÃ»§£©
+    // åˆ›å»ºç”¨æˆ·è¡¨ï¼ˆå­˜å‚¨ç®¡ç†å‘˜å¯†ç ï¼Œè¿™é‡Œåªåšå•ç”¨æˆ·ï¼‰
     db.run(`CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE NOT NULL,
     password TEXT NOT NULL
   )`, (err) => {
-        if (err) console.error('´´½¨ÓÃ»§±íÊ§°Ü£º', err.message);
-        // ³õÊ¼»¯Ä¬ÈÏ¹ÜÀíÔ±£¨ÓÃ»§Ãûadmin£¬ÃÜÂë123456£¬¼ÓÃÜºó´æ´¢£©
+        if (err) console.error('åˆ›å»ºç”¨æˆ·è¡¨å¤±è´¥ï¼š', err.message);
+        // åˆå§‹åŒ–é»˜è®¤ç®¡ç†å‘˜ï¼ˆç”¨æˆ·åadminï¼Œå¯†ç 123456ï¼ŒåŠ å¯†åŽå­˜å‚¨ï¼‰
         bcrypt.hash('123456', 10, (err, hash) => {
             db.run(`INSERT OR IGNORE INTO users (username, password) VALUES (?, ?)`, ['admin', hash]);
         });
     });
 
-    // ´´½¨´ý°ìÊÂÏî±í
+    // åˆ›å»ºå¾…åŠžäº‹é¡¹è¡¨
     db.run(`CREATE TABLE IF NOT EXISTS todos (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     content TEXT NOT NULL,
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP
   )`, (err) => {
-        if (err) console.error('´´½¨´ý°ì±íÊ§°Ü£º', err.message);
+        if (err) console.error('åˆ›å»ºå¾…åŠžè¡¨å¤±è´¥ï¼š', err.message);
     });
 }
 
-// 3. ºó¶Ë½Ó¿Ú£ºÑéÖ¤ÃÜÂë£¨µÇÂ¼£©
+// 3. åŽç«¯æŽ¥å£ï¼šéªŒè¯å¯†ç ï¼ˆç™»å½•ï¼‰
 app.post('/api/login', (req, res) => {
     const { password } = req.body;
-    // ²éÑ¯Êý¾Ý¿âÀïµÄ¹ÜÀíÔ±ÃÜÂë
+    // æŸ¥è¯¢æ•°æ®åº“é‡Œçš„ç®¡ç†å‘˜å¯†ç 
     db.get(`SELECT password FROM users WHERE username = ?`, ['admin'], (err, row) => {
         if (err) {
-            return res.json({ success: false, message: '·þÎñÆ÷´íÎó' });
+            return res.json({ success: false, message: 'æœåŠ¡å™¨é”™è¯¯' });
         }
         if (!row) {
-            return res.json({ success: false, message: 'ÎÞ¹ÜÀíÔ±ÕË»§' });
+            return res.json({ success: false, message: 'æ— ç®¡ç†å‘˜è´¦æˆ·' });
         }
-        // ¶Ô±ÈÃÜÂë£¨¼ÓÃÜºó¶Ô±È£©
+        // å¯¹æ¯”å¯†ç ï¼ˆåŠ å¯†åŽå¯¹æ¯”ï¼‰
         bcrypt.compare(password, row.password, (err, result) => {
             if (result) {
-                res.json({ success: true, message: 'µÇÂ¼³É¹¦' });
+                res.json({ success: true, message: 'ç™»å½•æˆåŠŸ' });
             } else {
-                res.json({ success: false, message: 'ÃÜÂë´íÎó' });
+                res.json({ success: false, message: 'å¯†ç é”™è¯¯' });
             }
         });
     });
 });
 
-// 4. ºó¶Ë½Ó¿Ú£º»ñÈ¡ËùÓÐ´ý°ìÊÂÏî
+// 4. åŽç«¯æŽ¥å£ï¼šèŽ·å–æ‰€æœ‰å¾…åŠžäº‹é¡¹
 app.get('/api/todos', (req, res) => {
     db.all(`SELECT * FROM todos ORDER BY create_time DESC`, (err, rows) => {
         if (err) {
@@ -82,33 +85,34 @@ app.get('/api/todos', (req, res) => {
     });
 });
 
-// 5. ºó¶Ë½Ó¿Ú£ºÌí¼Ó´ý°ìÊÂÏî
+// 5. åŽç«¯æŽ¥å£ï¼šæ·»åŠ å¾…åŠžäº‹é¡¹
 app.post('/api/todos', (req, res) => {
     const { content } = req.body;
     if (!content) {
-        return res.json({ success: false, message: 'ÄÚÈÝ²»ÄÜÎª¿Õ' });
+        return res.json({ success: false, message: 'å†…å®¹ä¸èƒ½ä¸ºç©º' });
     }
     db.run(`INSERT INTO todos (content) VALUES (?)`, [content], function (err) {
         if (err) {
-            return res.json({ success: false, message: 'Ìí¼ÓÊ§°Ü' });
+            return res.json({ success: false, message: 'æ·»åŠ å¤±è´¥' });
         }
         res.json({ success: true, id: this.lastID });
     });
 });
 
-// 6. ºó¶Ë½Ó¿Ú£ºÉ¾³ý´ý°ìÊÂÏî
+// 6. åŽç«¯æŽ¥å£ï¼šåˆ é™¤å¾…åŠžäº‹é¡¹
 app.delete('/api/todos/:id', (req, res) => {
     const id = req.params.id;
     db.run(`DELETE FROM todos WHERE id = ?`, [id], (err) => {
         if (err) {
-            return res.json({ success: false, message: 'É¾³ýÊ§°Ü' });
+            return res.json({ success: false, message: 'åˆ é™¤å¤±è´¥' });
         }
         res.json({ success: true });
     });
 });
 
-// Æô¶¯·þÎñÆ÷
+// å¯åŠ¨æœåŠ¡å™¨
 app.listen(port, () => {
-    console.log(`ºó¶Ë·þÎñÔËÐÐÔÚ£ºhttp://localhost:${port}`);
-    console.log('´ò¿ªä¯ÀÀÆ÷·ÃÎÊ£ºhttp://localhost:3000/index.html ¼´¿ÉÊ¹ÓÃ');
+    console.log(`åŽç«¯æœåŠ¡è¿è¡Œåœ¨ï¼šhttp://localhost:${port}`);
+    console.log('æ‰“å¼€æµè§ˆå™¨è®¿é—®ï¼šhttp://localhost:3000/index.html å³å¯ä½¿ç”¨');
+
 });
